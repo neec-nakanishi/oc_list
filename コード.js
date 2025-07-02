@@ -17,6 +17,9 @@ const departments = [
 const columnsArray = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 21, 22, 23, 29, 30, 32, 33, 40, 41];
 
 function run() {
+  // メッセージをクリア
+  resetMessage();
+  
   // 出力ファイル名の設定
   var createFileName = getTodayAsMMDD();
   // 蒲田用
@@ -61,9 +64,8 @@ function run() {
 function ReadSpreadsheet(srcFolderId, trgFolderId, createFileName) {
   var ret = false;
   const srcFolder = DriveApp.getFolderById(srcFolderId);
-  const files = srcFolder.getFiles();
-  var srcFileId = '';
-  var tmpFileId = '';
+  var files = srcFolder.getFiles();
+  var rmfiles = [];
 
   while (files.hasNext()) {
     const file = files.next();
@@ -78,8 +80,9 @@ function ReadSpreadsheet(srcFolderId, trgFolderId, createFileName) {
       parents: [srcFolderId]
     }, file.getBlob(), {convert: true, supportsAllDrives: true});
     Logger.log("読み込んだファイル: " + file.getName());
-    srcFileId = file.getId();
-    tmpFileId = tmpFile.getId();
+    // 削除ファイルリストに追加
+    rmfiles.push(file.getId());
+    rmfiles.push(tmpFile.getId());
 
     try {
       const sourceSheet = SpreadsheetApp.openById(tmpFile.id);
@@ -90,12 +93,13 @@ function ReadSpreadsheet(srcFolderId, trgFolderId, createFileName) {
       console.log('エラー内容：'+e.message);
     }
   }
-  // 一時的に作成したスプレッドシートを削除
-  const rmfiles = srcFolder.getFiles();
+
   try {
-    while (rmfiles.hasNext()) {
-      const file = rmfiles.next();
-      if (file.getId()==tmpFileId || file.getId()==srcFileId) {
+    // リストアップされたファイルをすべて削除
+    files = srcFolder.getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      if (rmfiles.includes(file.getId())) {
         file.setTrashed(true);
       }
     }
@@ -103,7 +107,6 @@ function ReadSpreadsheet(srcFolderId, trgFolderId, createFileName) {
     errorMessage('ファイル削除　エラー内容：'+e.message);
     console.log('ファイル削除　エラー内容：'+e.message);
   }
-
   return ret;
 }
 
@@ -111,7 +114,6 @@ function resetMessage() {
   message("", 11);
   message("", 12);
   errorMessage("");
-  SpreadsheetApp.getActiveSheet().getRange(5,5).setValue(false);
 }
 
 function message(str, row) {
